@@ -73,28 +73,34 @@ const start = async () => {
       timestamp: new Date().toISOString()
     }))
 
-    await app.listen({
-      port: process.env.PORT || 5000,
-      host: '0.0.0.0'
-    })
-
-    initSocket(app.server)
-
-    await createAuditLog({
-      action: 'SERVER_START',
-      outcome: 'SUCCESS',
-      metadata: {
+    if (!process.env.VERCEL) {
+      await app.listen({
         port: process.env.PORT || 5000,
-        environment: process.env.NODE_ENV
-      }
-    })
+        host: '0.0.0.0'
+      })
 
-    console.log('AttackSimulator running on port 5000')
+      initSocket(app.server)
 
+      await createAuditLog({
+        action: 'SERVER_START',
+        outcome: 'SUCCESS',
+        metadata: {
+          port: process.env.PORT || 5000,
+          environment: process.env.NODE_ENV
+        }
+      })
+
+      console.log('AttackSimulator running on port 5000')
+    }
   } catch (err) {
     console.error('Startup failed:', err)
-    process.exit(1)
+    if (!process.env.VERCEL) process.exit(1)
   }
 }
 
 start()
+
+module.exports = async (req, res) => {
+  await app.ready()
+  app.server.emit('request', req, res)
+}
