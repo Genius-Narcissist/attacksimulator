@@ -5,6 +5,7 @@ const SimulationEvent = require('../models/SimulationEvent')
 const { selectTechnique, getNextTargets } = require('./techniqueSelector')
 const { createAuditLog } = require('./auditLogger')
 const { nanoid } = require('nanoid')
+const { emitGhostHop, emitGhostState, emitScenarioComplete } = require('./socketManager') // NEW
 
 // Spawn ghost on patient zero
 async function spawnGhost(scenarioId, patientZeroId) {
@@ -15,7 +16,6 @@ async function spawnGhost(scenarioId, patientZeroId) {
     .populate('department', 'name')
   if (!patientZero) throw new Error('Patient zero not found')
 
-  // Find colleagues — never store passwords or credentials
   const colleagues = await Employee.find({
     department: patientZero.department._id,
     _id: { $ne: patientZero._id },
@@ -41,7 +41,6 @@ async function spawnGhost(scenarioId, patientZeroId) {
 
   await ghost.save()
 
-  // Mark patient zero as compromised
   await Employee.findByIdAndUpdate(patientZeroId, { isCompromised: true })
 
   scenario.patientZero = patientZeroId
@@ -64,7 +63,8 @@ async function spawnGhost(scenarioId, patientZeroId) {
 async function executeGhostHop(ghostId) {
   const ghost = await GhostPersona.findById(ghostId)
   if (!ghost) throw new Error('Ghost not found')
-  if (['TERMINATED', 'BREACHED'].includes(ghost.state)) return { terminated: true, reason: ghost.state }
+  if (['TERMINATED', 'BREACHED'].includes(ghost.state))
+    return { terminated: true, reason: ghost.state }
 
   const scenario = await Scenario.findById(ghost.scenario)
   const allEmployees = await Employee.find({
@@ -75,7 +75,6 @@ async function executeGhostHop(ghostId) {
   const compromisedIds = ghost.compromisedNodes.map(id => id.toString())
   const failedIds = ghost.failedAttempts.map(a => a.employeeId.toString())
 
-  // Find last compromised employee as spread source
   const lastCompromised = await Employee.findById(
     ghost.compromisedNodes[ghost.compromisedNodes.length - 1]
   )
@@ -88,38 +87,40 @@ async function executeGhostHop(ghostId) {
     failedIds
   })
 
-  // Prefer lateral first, then longitudinal
   const candidates = [...lateral, ...longitudinal]
+
   if (candidates.length === 0) {
-    // No targets — escalate aggression and try other departments
     ghost.aggressionLevel = Math.min(ghost.aggressionLevel + 1, 5)
     ghost.state = 'ESCALATING'
     await ghost.save()
+
     scenario.ghostState = 'ESCALATING'
     await scenario.save()
+
     return { escalated: true, aggressionLevel: ghost.aggressionLevel }
   }
 
   const target = candidates[0]
 
-  // Select technique based on target archetype
   const technique = selectTechnique({
     targetArchetype: target.behavioralArchetype,
     failedTechniques: ghost.techniqueHistory,
     aggressionLevel: ghost.aggressionLevel
   })
 
-  // Skeptical verifier — ghost cannot compromise
   if (!technique) {
-    ghost.failedAttempts.push({ employeeId: target._id, technique: 'none', failedAt: new Date() })
+    ghost.failedAttempts.push({
+      employeeId: target._id,
+      technique: 'none',
+      failedAt: new Date()
+    })
     await ghost.save()
+
     return { blocked: true, targetId: target._id, reason: 'skeptical_verifier' }
   }
 
-  // Check if target is admin — if yes, BREACHED
   const isAdmin = target.role === 'admin'
 
-  // Create simulation event for ghost hop
   const token = nanoid(32)
   const hopNumber = ghost.compromisedNodes.length
 
@@ -136,7 +137,6 @@ async function executeGhostHop(ghostId) {
   })
   await event.save()
 
-  // Compromise the target
   ghost.compromisedNodes.push(target._id)
   ghost.techniqueHistory.push(technique.id)
   ghost.currentTarget = target._id
@@ -155,15 +155,40 @@ async function executeGhostHop(ghostId) {
     scenario.completedAt = new Date()
     scenario.terminationReason = 'admin_breached'
   }
+
   await scenario.save()
+
+  // NEW SOCKET EMISSION
+  emitGhostHop(ghost.scenario.toString(), {
+    hopNumber,
+    targetId: target._id,
+    targetName: target.displayName,
+    targetRole: target.role,
+    targetDepartment: target.department,
+    technique: technique.name,
+    ghostState: ghost.state,
+    compromisedCount: scenario.compromisedCount
+  })
+
+  if (isAdmin) {
+    emitScenarioComplete(ghost.scenario.toString(), {
+      outcome: 'breached',
+      compromisedCount: scenario.compromisedCount,
+      totalHops: hopNumber
+    })
+  }
 
   await createAuditLog({
     actorId: null, actorRole: 'system',
     action: isAdmin ? 'ghost.breached' : 'ghost.hop',
     outcome: 'SUCCESS',
     metadata: {
-      ghostId, targetId: target._id, technique: technique.id,
-      hopNumber, isAdmin, scenarioId: ghost.scenario
+      ghostId,
+      targetId: target._id,
+      technique: technique.id,
+      hopNumber,
+      isAdmin,
+      scenarioId: ghost.scenario
     }
   })
 
@@ -190,16 +215,21 @@ async function terminateGhost(ghostId, terminatedBy) {
   await ghost.save()
 
   const scenario = await Scenario.findById(ghost.scenario)
+
   if (scenario) {
     scenario.ghostState = 'TERMINATED'
     scenario.status = 'completed'
     scenario.completedAt = new Date()
     scenario.terminationReason = 'defender_caught'
     await scenario.save()
+
+    // NEW SOCKET EMISSION
+    emitGhostState(ghost.scenario.toString(), { state: 'TERMINATED' })
   }
 
   await createAuditLog({
-    actorId: terminatedBy, actorRole: 'defender',
+    actorId: terminatedBy,
+    actorRole: 'defender',
     action: 'ghost.terminated',
     outcome: 'SUCCESS',
     metadata: { ghostId, scenarioId: ghost.scenario }

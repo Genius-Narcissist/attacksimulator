@@ -5,12 +5,13 @@ const {
   initAuditChain,
   createAuditLog
 } = require('./utils/auditLogger')
-const { initSocket } = require('./utils/socketManager') // NEW
+const { initSocket } = require('./utils/socketManager')
 
 const orgRoutes = require('./routes/orgRoutes')
 const scenarioRoutes = require('./routes/scenarioRoutes')
-const simulationRoutes = require('./routes/simulationRoutes') // NEW
-const ghostRoutes = require('./routes/ghostRoutes') // NEW
+const simulationRoutes = require('./routes/simulationRoutes')
+const ghostRoutes = require('./routes/ghostRoutes')
+const defenderRoutes = require('./routes/defenderRoutes') // NEW
 
 const app = Fastify({ logger: false })
 
@@ -46,7 +47,6 @@ const start = async () => {
       }
     })
 
-    // STEP 9 addition
     await app.register(require('@fastify/multipart'), {
       limits: { fileSize: 5 * 1024 * 1024, files: 1 }
     })
@@ -56,11 +56,11 @@ const start = async () => {
 
     app.register(require('./routes/authRoutes'))
 
-    // STEP 9 addition
     app.register(orgRoutes, { prefix: '/api' })
     app.register(scenarioRoutes, { prefix: '/api' })
-    app.register(simulationRoutes, { prefix: '/api' }) // NEW
-    app.register(ghostRoutes, { prefix: '/api' }) // NEW
+    app.register(simulationRoutes, { prefix: '/api' })
+    app.register(ghostRoutes, { prefix: '/api' })
+    app.register(defenderRoutes, { prefix: '/api' }) // NEW
 
     app.get('/health', async () => ({
       status: 'ok',
@@ -72,7 +72,7 @@ const start = async () => {
       host: '0.0.0.0'
     })
 
-    initSocket(app.server) // NEW
+    initSocket(app.server)
 
     await createAuditLog({
       action: 'SERVER_START',
