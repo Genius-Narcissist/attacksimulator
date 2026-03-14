@@ -61,7 +61,7 @@ employeeSchema.virtual('email').get(function() {
   try { return decryptEmail(this.emailEncrypted) } catch { return null }
 })
 
-employeeSchema.pre('save', function(next) {
+employeeSchema.pre('save', function() {
   this.firstName = mongoSanitize(this.firstName)
   this.lastName = mongoSanitize(this.lastName)
   this.displayName = `${this.firstName} ${this.lastName}`
@@ -70,7 +70,7 @@ employeeSchema.pre('save', function(next) {
     finance_analyst: 0.6, hr_manager: 0.7, general_employee: 0.4
   }
   this.roleSensitivityWeight = ROLE_WEIGHTS[this.role] ?? 0.4
-  next()
+  
 })
 
 employeeSchema.statics.setEmail = function(employeeDoc, rawEmail) {

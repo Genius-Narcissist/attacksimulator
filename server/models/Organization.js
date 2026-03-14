@@ -25,7 +25,6 @@ const organizationSchema = new mongoose.Schema({
 organizationSchema.pre('save', function(next) {
   this.name = mongoSanitize(this.name)
   this.domain = mongoSanitize(this.domain)
-  next()
 })
 
 module.exports = mongoose.model('Organization', organizationSchema)

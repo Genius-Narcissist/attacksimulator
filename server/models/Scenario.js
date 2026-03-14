@@ -38,9 +38,8 @@ const scenarioSchema = new mongoose.Schema({
   }
 }, { timestamps: true })
 
-scenarioSchema.pre('save', function(next) {
+scenarioSchema.pre('save', function() {
   this.name = mongoSanitize(this.name)
-  next()
 })
 
 module.exports = mongoose.model('Scenario', scenarioSchema)

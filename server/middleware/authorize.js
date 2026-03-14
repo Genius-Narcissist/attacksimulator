@@ -1,7 +1,8 @@
 const { createAuditLog } = require('../utils/auditLogger')
 
-const authorize = (...allowedRoles) => {
+const authorize = (allowedRoles) => {
   return async (req, reply) => {
+
     if (!req.user) {
       return reply.status(401).send({
         error: 'Authentication required'
@@ -9,9 +10,10 @@ const authorize = (...allowedRoles) => {
     }
 
     if (!allowedRoles.includes(req.user.role)) {
+
       await createAuditLog({
         action: 'AUTHORIZATION_FAILED',
-        actorId: req.user.userId,
+        actorId: req.user.id,
         actorRole: req.user.role,
         outcome: 'BLOCKED',
         metadata: {
@@ -29,6 +31,7 @@ const authorize = (...allowedRoles) => {
         error: 'You do not have permission to perform this action'
       })
     }
+
   }
 }
 
