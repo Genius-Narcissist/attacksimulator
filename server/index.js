@@ -6,6 +6,8 @@ const {
   createAuditLog
 } = require('./utils/auditLogger')
 
+const orgRoutes = require('./routes/orgRoutes')
+
 const app = Fastify({ logger: false })
 
 const start = async () => {
@@ -40,10 +42,18 @@ const start = async () => {
       }
     })
 
+    // STEP 9 addition
+    await app.register(require('@fastify/multipart'), {
+      limits: { fileSize: 5 * 1024 * 1024, files: 1 }
+    })
+
     await connectDB()
     await initAuditChain()
 
     app.register(require('./routes/authRoutes'))
+
+    // STEP 9 addition
+    app.register(orgRoutes, { prefix: '/api' })
 
     app.get('/health', async () => ({
       status: 'ok',
