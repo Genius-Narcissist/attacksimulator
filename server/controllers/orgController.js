@@ -1,3 +1,124 @@
+const mongoSanitize = require('mongo-sanitize')
+const Employee = require('../models/Employee')
+const Organization = require('../models/Organization')
+const Department = require('../models/Department')
+
+
+/* CREATE ORGANIZATION */
+
+async function createOrganization(request, reply) {
+  try {
+
+    const org = new Organization({
+      name: request.body.name
+    })
+
+    await org.save()
+
+    return reply.status(201).send({ organization: org })
+
+  } catch (err) {
+    request.log.error(err)
+    return reply.status(500).send({ error: 'Internal server error' })
+  }
+}
+
+
+/* GET ORGANIZATION */
+
+async function getOrganization(request, reply) {
+  try {
+
+    const org = await Organization.findById(
+      mongoSanitize(request.params.orgId)
+    )
+
+    if (!org)
+      return reply.status(404).send({ error: 'Organization not found' })
+
+    return reply.send({ organization: org })
+
+  } catch (err) {
+    request.log.error(err)
+    return reply.status(500).send({ error: 'Internal server error' })
+  }
+}
+
+
+/* ADD DEPARTMENT */
+
+async function addDepartment(request, reply) {
+  try {
+
+    const dept = new Department({
+      name: request.body.name,
+      organization: mongoSanitize(request.params.orgId)
+    })
+
+    await dept.save()
+
+    return reply.status(201).send({ department: dept })
+
+  } catch (err) {
+    request.log.error(err)
+    return reply.status(500).send({ error: 'Internal server error' })
+  }
+}
+
+
+/* GET DEPARTMENTS */
+
+async function getDepartments(request, reply) {
+  try {
+
+    const departments = await Department.find({
+      organization: mongoSanitize(request.params.orgId)
+    })
+
+    return reply.send({ departments })
+
+  } catch (err) {
+    request.log.error(err)
+    return reply.status(500).send({ error: 'Internal server error' })
+  }
+}
+
+
+/* ADD EMPLOYEE */
+
+async function addEmployee(request, reply) {
+  try {
+
+    const employee = new Employee({
+      firstName: request.body.firstName,
+      lastName: request.body.lastName,
+      role: request.body.role,
+      department: request.body.department,
+      organization: mongoSanitize(request.params.orgId)
+    })
+
+    Employee.setEmail(employee, request.body.email)
+
+    await employee.save()
+
+    return reply.status(201).send({ employee })
+
+  } catch (err) {
+    request.log.error(err)
+    return reply.status(500).send({ error: 'Internal server error' })
+  }
+}
+
+
+/* BULK UPLOAD EMPLOYEES */
+
+async function bulkUploadEmployees(request, reply) {
+  return reply.send({ message: "Bulk upload not implemented yet" })
+}
+
+
+/* GET EMPLOYEES */
+
 async function getEmployees(request, reply) {
   try {
 
@@ -52,6 +173,8 @@ async function getEmployees(request, reply) {
 }
 
 
+/* GET EMPLOYEE */
+
 async function getEmployee(request, reply) {
   try {
 
@@ -91,6 +214,8 @@ async function getEmployee(request, reply) {
 }
 
 
+/* UPDATE SECURITY CULTURE SCORE */
+
 async function updateOrgSecurityCultureScore(orgId) {
 
   const employees = await Employee.find({
@@ -124,4 +249,19 @@ async function updateOrgSecurityCultureScore(orgId) {
     'securityCultureBreakdown.reportRate': Math.round(reportRate),
     'securityCultureBreakdown.moduleCompletion': Math.round(completionRate)
   })
+}
+
+
+/* EXPORTS */
+
+module.exports = {
+  createOrganization,
+  getOrganization,
+  addDepartment,
+  getDepartments,
+  addEmployee,
+  getEmployees,
+  getEmployee,
+  bulkUploadEmployees,
+  updateOrgSecurityCultureScore
 }

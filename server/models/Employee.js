@@ -30,6 +30,16 @@ const employeeSchema = new mongoose.Schema({
   phoneEncrypted: { type: String, default: null },
   phoneHash: { type: String, default: null },
   whatsappNumber: { type: String, default: null },
+
+  /* PASSWORD SECURITY FIELDS (ADDED HERE) */
+  passwordHash: { type: String, default: null },
+  passwordSetAt: { type: Date, default: null },
+  passwordResetToken: { type: String, default: null },
+  passwordResetExpiry: { type: Date, default: null },
+  failedLoginAttempts: { type: Number, default: 0 },
+  lockedUntil: { type: Date, default: null },
+  lastLoginAt: { type: Date, default: null },
+
   preferredChannels: {
     type: [String],
     enum: ['email', 'sms', 'whatsapp', 'voice'],
@@ -175,10 +185,47 @@ employeeSchema.statics.findByPhone = function(rawPhone) {
 }
 
 
+/* PASSWORD METHODS */
+
+employeeSchema.methods.setPassword = async function(plainPassword) {
+  const argon2 = require('argon2')
+  this.passwordHash = await argon2.hash(plainPassword, {
+    type: argon2.argon2id,
+    memoryCost: 2 ** 16,
+    timeCost: 3
+  })
+  this.passwordSetAt = new Date()
+}
+
+employeeSchema.methods.verifyPassword = async function(plainPassword) {
+  if (!this.passwordHash) return false
+  const argon2 = require('argon2')
+  return argon2.verify(this.passwordHash, plainPassword)
+}
+
+employeeSchema.methods.isLocked = function() {
+  return this.lockedUntil && this.lockedUntil > new Date()
+}
+
+employeeSchema.methods.incrementFailedAttempts = async function() {
+  this.failedLoginAttempts += 1
+  if (this.failedLoginAttempts >= 5) {
+    this.lockedUntil = new Date(Date.now() + 15 * 60 * 1000)
+  }
+  await this.save()
+}
+
+employeeSchema.methods.resetFailedAttempts = async function() {
+  this.failedLoginAttempts = 0
+  this.lockedUntil = null
+  this.lastLoginAt = new Date()
+  await this.save()
+}
+
+
 /* INCLUDE VIRTUALS */
 
 employeeSchema.set('toJSON', { virtuals: true })
 employeeSchema.set('toObject', { virtuals: true })
-
 
 module.exports = mongoose.model('Employee', employeeSchema)

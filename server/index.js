@@ -14,6 +14,7 @@ const ghostRoutes = require('./routes/ghostRoutes')
 const defenderRoutes = require('./routes/defenderRoutes')
 const analyticsRoutes = require('./routes/analyticsRoutes')
 const awarenessRoutes = require('./routes/awarenessRoutes') // NEW
+const employeeAuthRoutes = require('./routes/employeeAuthRoutes') // ADDED
 
 const app = Fastify({ logger: false })
 
@@ -65,6 +66,7 @@ const start = async () => {
     app.register(defenderRoutes, { prefix: '/api' })
     app.register(analyticsRoutes, { prefix: '/api' })
     app.register(awarenessRoutes, { prefix: '/api' }) // NEW
+    app.register(employeeAuthRoutes, { prefix: '/api' }) // ADDED
 
     app.get('/health', async () => ({
       status: 'ok',
