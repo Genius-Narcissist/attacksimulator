@@ -21,7 +21,7 @@ const app = Fastify({ logger: true })
 const start = async () => {
   try {
     await app.register(require('@fastify/cors'), {
-      origin: process.env.CLIENT_URL,
+      origin: [/localhost:\d+$/, /127\.0\.0\.1:\d+$/],
       credentials: true
     })
 

@@ -20,25 +20,13 @@ const registerSchema = z.object({
 
   password: z
     .string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(128, 'Password too long')
-    .refine(
-      val => /[A-Z]/.test(val),
-      'Password must contain at least one uppercase letter'
-    )
-    .refine(
-      val => /[0-9]/.test(val),
-      'Password must contain at least one number'
-    )
-    .refine(
-      val => /[^A-Za-z0-9]/.test(val),
-      'Password must contain at least one special character'
-    ),
+    .min(6, 'Password must be at least 6 characters')
+    .max(128, 'Password too long'),
 
   role: z
-    .enum(['admin', 'analyst', 'defender'])
+    .enum(['admin', 'analyst', 'defender', 'employee'])
     .optional()
-    .default('analyst'),
+    .default('employee'),
 
   organizationId: z
     .string()

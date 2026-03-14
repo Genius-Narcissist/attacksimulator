@@ -7,6 +7,7 @@ const Department = require('../models/Department')
 const Organization = require('../models/Organization')
 
 const { createAuditLog } = require('../utils/auditLogger')
+const { executeWave1 } = require('../utils/waveExecutor')
 
 const CreateScenarioSchema = z.object({
   name: z.string().min(2).max(200).trim(),
@@ -220,6 +221,9 @@ async function launchScenario(request, reply) {
     scenario.startedAt = new Date()
 
     await scenario.save()
+
+    // NEW: Actually execute the attack wave to send the emails
+    const waveResult = await executeWave1(scenario._id)
 
     await createAuditLog({
       ...actor(request),
