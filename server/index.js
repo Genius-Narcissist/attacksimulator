@@ -5,10 +5,12 @@ const {
   initAuditChain,
   createAuditLog
 } = require('./utils/auditLogger')
+const { initSocket } = require('./utils/socketManager') // NEW
 
 const orgRoutes = require('./routes/orgRoutes')
 const scenarioRoutes = require('./routes/scenarioRoutes')
 const simulationRoutes = require('./routes/simulationRoutes') // NEW
+const ghostRoutes = require('./routes/ghostRoutes') // NEW
 
 const app = Fastify({ logger: false })
 
@@ -58,6 +60,7 @@ const start = async () => {
     app.register(orgRoutes, { prefix: '/api' })
     app.register(scenarioRoutes, { prefix: '/api' })
     app.register(simulationRoutes, { prefix: '/api' }) // NEW
+    app.register(ghostRoutes, { prefix: '/api' }) // NEW
 
     app.get('/health', async () => ({
       status: 'ok',
@@ -68,6 +71,8 @@ const start = async () => {
       port: process.env.PORT || 5000,
       host: '0.0.0.0'
     })
+
+    initSocket(app.server) // NEW
 
     await createAuditLog({
       action: 'SERVER_START',
