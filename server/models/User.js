@@ -3,7 +3,7 @@ const crypto = require('crypto')
 const argon2 = require('argon2')
 
 const ENCRYPTION_KEY = Buffer.from(
-  process.env.FIELD_ENCRYPTION_SECRET
+  (process.env.FIELD_ENCRYPTION_SECRET || 'default_dev_secret_key')
     .padEnd(32, '0')
     .slice(0, 32)
 )

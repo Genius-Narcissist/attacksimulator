@@ -5,33 +5,52 @@ const crypto = require('crypto')
 const ENCRYPTION_KEY = Buffer.from(process.env.EMAIL_ENCRYPTION_KEY || 'a'.repeat(64), 'hex')
 const IV_LENGTH = 16
 
+
+/* ENCRYPT EMAIL */
+
 function encryptEmail(text) {
   const iv = crypto.randomBytes(IV_LENGTH)
   const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv)
+
   let encrypted = cipher.update(text, 'utf8', 'hex')
   encrypted += cipher.final('hex')
+
   return iv.toString('hex') + ':' + encrypted
 }
+
+
+/* DECRYPT EMAIL */
 
 function decryptEmail(text) {
   const [ivHex, encrypted] = text.split(':')
   const iv = Buffer.from(ivHex, 'hex')
+
   const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv)
+
   let decrypted = decipher.update(encrypted, 'hex', 'utf8')
   decrypted += decipher.final('utf8')
+
   return decrypted
 }
 
+
+/* SCHEMA */
+
 const employeeSchema = new mongoose.Schema({
+
   emailEncrypted: { type: String, required: true },
   emailHash: { type: String, required: true, unique: true },
 
-  /* NEW PHONE FIELDS */
+
+  /* PHONE */
+
   phoneEncrypted: { type: String, default: null },
   phoneHash: { type: String, default: null },
   whatsappNumber: { type: String, default: null },
 
-  /* PASSWORD SECURITY FIELDS (ADDED HERE) */
+
+  /* PASSWORD SECURITY */
+
   passwordHash: { type: String, default: null },
   passwordSetAt: { type: Date, default: null },
   passwordResetToken: { type: String, default: null },
@@ -40,14 +59,17 @@ const employeeSchema = new mongoose.Schema({
   lockedUntil: { type: Date, default: null },
   lastLoginAt: { type: Date, default: null },
 
+
   preferredChannels: {
     type: [String],
     enum: ['email', 'sms', 'whatsapp', 'voice'],
     default: ['email']
   },
 
+
   firstName: { type: String, required: true, trim: true },
   lastName: { type: String, required: true, trim: true },
+
 
   role: {
     type: String,
@@ -62,11 +84,30 @@ const employeeSchema = new mongoose.Schema({
     ]
   },
 
-  department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', required: true },
-  organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
-  manager: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
+
+  department: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Department',
+    required: true
+  },
+
+
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true
+  },
+
+
+  manager: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Employee',
+    default: null
+  },
+
 
   displayName: { type: String },
+
 
   behavioralArchetype: {
     type: String,
@@ -80,9 +121,13 @@ const employeeSchema = new mongoose.Schema({
     default: 'unknown'
   },
 
+
   roleSensitivityWeight: { type: Number, default: 0.4 },
+
   securityScore: { type: Number, default: 0, min: 0, max: 100 },
+
   scenariosCompleted: { type: Number, default: 0 },
+
   scenariosFailed: { type: Number, default: 0 },
 
   awarModulesCompleted: { type: Number, default: 0 },
@@ -90,7 +135,9 @@ const employeeSchema = new mongoose.Schema({
   badges: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SecurityBadge' }],
 
   isActive: { type: Boolean, default: true },
+
   isCompromised: { type: Boolean, default: false },
+
 
   lastSimulationResult: {
     type: String,
@@ -103,15 +150,15 @@ const employeeSchema = new mongoose.Schema({
 
 /* EMAIL VIRTUAL */
 
-employeeSchema.virtual('email').get(function() {
+employeeSchema.virtual('email').get(function () {
   if (!this.emailEncrypted) return null
   try { return decryptEmail(this.emailEncrypted) } catch { return null }
 })
 
 
-/* NEW PHONE VIRTUAL */
+/* PHONE VIRTUAL */
 
-employeeSchema.virtual('phone').get(function() {
+employeeSchema.virtual('phone').get(function () {
   if (!this.phoneEncrypted) return null
   try { return decryptEmail(this.phoneEncrypted) } catch { return null }
 })
@@ -119,7 +166,7 @@ employeeSchema.virtual('phone').get(function() {
 
 /* SANITIZE + COMPUTED FIELDS */
 
-employeeSchema.pre('save', function() {
+employeeSchema.pre('save', function () {
 
   this.firstName = mongoSanitize(this.firstName)
   this.lastName = mongoSanitize(this.lastName)
@@ -141,16 +188,23 @@ employeeSchema.pre('save', function() {
 
 /* EMAIL METHODS */
 
-employeeSchema.statics.setEmail = function(employeeDoc, rawEmail) {
+employeeSchema.statics.setEmail = function (employeeDoc, rawEmail) {
+
   const normalized = rawEmail.toLowerCase().trim()
+
   employeeDoc.emailEncrypted = encryptEmail(normalized)
-  employeeDoc.emailHash = crypto.createHash('sha256')
+
+  employeeDoc.emailHash = crypto
+    .createHash('sha256')
     .update(normalized)
     .digest('hex')
 }
 
-employeeSchema.statics.findByEmail = function(rawEmail) {
-  const hash = crypto.createHash('sha256')
+
+employeeSchema.statics.findByEmail = function (rawEmail) {
+
+  const hash = crypto
+    .createHash('sha256')
     .update(rawEmail.toLowerCase().trim())
     .digest('hex')
 
@@ -158,9 +212,9 @@ employeeSchema.statics.findByEmail = function(rawEmail) {
 }
 
 
-/* NEW PHONE METHODS */
+/* PHONE METHODS */
 
-employeeSchema.statics.setPhone = function(employeeDoc, rawPhone) {
+employeeSchema.statics.setPhone = function (employeeDoc, rawPhone) {
 
   if (!rawPhone) return
 
@@ -168,16 +222,19 @@ employeeSchema.statics.setPhone = function(employeeDoc, rawPhone) {
 
   employeeDoc.phoneEncrypted = encryptEmail(normalized)
 
-  employeeDoc.phoneHash = crypto.createHash('sha256')
+  employeeDoc.phoneHash = crypto
+    .createHash('sha256')
     .update(normalized)
     .digest('hex')
 
   employeeDoc.whatsappNumber = normalized
 }
 
-employeeSchema.statics.findByPhone = function(rawPhone) {
 
-  const hash = crypto.createHash('sha256')
+employeeSchema.statics.findByPhone = function (rawPhone) {
+
+  const hash = crypto
+    .createHash('sha256')
     .update(rawPhone.replace(/\s+/g, '').trim())
     .digest('hex')
 
@@ -187,39 +244,66 @@ employeeSchema.statics.findByPhone = function(rawPhone) {
 
 /* PASSWORD METHODS */
 
-employeeSchema.methods.setPassword = async function(plainPassword) {
+employeeSchema.methods.setPassword = async function (plainPassword) {
+
   const argon2 = require('argon2')
+
   this.passwordHash = await argon2.hash(plainPassword, {
     type: argon2.argon2id,
     memoryCost: 2 ** 16,
     timeCost: 3
   })
+
   this.passwordSetAt = new Date()
 }
 
-employeeSchema.methods.verifyPassword = async function(plainPassword) {
+
+employeeSchema.methods.verifyPassword = async function (plainPassword) {
+
   if (!this.passwordHash) return false
+
   const argon2 = require('argon2')
+
   return argon2.verify(this.passwordHash, plainPassword)
 }
 
-employeeSchema.methods.isLocked = function() {
+
+employeeSchema.methods.isLocked = function () {
   return this.lockedUntil && this.lockedUntil > new Date()
 }
 
-employeeSchema.methods.incrementFailedAttempts = async function() {
+
+employeeSchema.methods.incrementFailedAttempts = async function () {
+
   this.failedLoginAttempts += 1
+
   if (this.failedLoginAttempts >= 5) {
     this.lockedUntil = new Date(Date.now() + 15 * 60 * 1000)
   }
+
   await this.save()
 }
 
-employeeSchema.methods.resetFailedAttempts = async function() {
+
+employeeSchema.methods.resetFailedAttempts = async function () {
+
   this.failedLoginAttempts = 0
   this.lockedUntil = null
   this.lastLoginAt = new Date()
+
   await this.save()
+}
+
+
+/* HELPER METHOD FOR DEBUGGING */
+
+employeeSchema.methods.getEmail = function () {
+  if (!this.emailEncrypted) return null
+  try {
+    return decryptEmail(this.emailEncrypted)
+  } catch {
+    return null
+  }
 }
 
 
@@ -227,5 +311,6 @@ employeeSchema.methods.resetFailedAttempts = async function() {
 
 employeeSchema.set('toJSON', { virtuals: true })
 employeeSchema.set('toObject', { virtuals: true })
+
 
 module.exports = mongoose.model('Employee', employeeSchema)

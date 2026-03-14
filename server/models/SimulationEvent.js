@@ -9,11 +9,22 @@ const simulationEventSchema = new mongoose.Schema({
     required: true,
     enum: ['email_phishing', 'credential_harvesting', 'social_engineering', 'malware_simulation', 'sim_swap']
   },
-  result: {
-    type: String,
-    enum: ['clicked', 'reported', 'ignored', 'submitted_form', 'downloaded', 'pending'],
-    default: 'pending'
-  },
+  attackType: {
+  type: String,
+  required: true,
+  enum: [
+    'email_phishing',
+    'credential_harvesting',
+    'social_engineering',
+    'malware_simulation',
+    'sim_swap',
+    'fileless_malware',
+    'watering_hole',
+    'bec',
+    'ai_deepfake',
+    'supply_chain'
+  ]
+},
   // HARDCODED — credentials are NEVER captured
   credentialsCaptured: { type: Boolean, default: false, immutable: true },
   timeToActionSeconds: { type: Number, default: null },

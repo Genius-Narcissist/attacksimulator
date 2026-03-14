@@ -11,9 +11,20 @@ const scenarioSchema = new mongoose.Schema({
     default: 'draft'
   },
   attackTypes: [{
-    type: String,
-    enum: ['email_phishing', 'credential_harvesting', 'social_engineering', 'malware_simulation', 'sim_swap']
-  }],
+  type: String,
+  enum: [
+    'email_phishing',
+    'credential_harvesting',
+    'social_engineering',
+    'malware_simulation',
+    'sim_swap',
+    'fileless_malware',
+    'watering_hole',
+    'bec',
+    'ai_deepfake',
+    'supply_chain'
+  ]
+}],
   targetDepartments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Department' }],
   targetEmployees: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }],
   patientZero: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },

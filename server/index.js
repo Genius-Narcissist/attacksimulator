@@ -16,7 +16,7 @@ const analyticsRoutes = require('./routes/analyticsRoutes')
 const awarenessRoutes = require('./routes/awarenessRoutes') // NEW
 const employeeAuthRoutes = require('./routes/employeeAuthRoutes') // ADDED
 
-const app = Fastify({ logger: false })
+const app = Fastify({ logger: true })
 
 const start = async () => {
   try {
