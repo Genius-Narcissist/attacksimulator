@@ -7,6 +7,7 @@ const {
 } = require('./utils/auditLogger')
 
 const orgRoutes = require('./routes/orgRoutes')
+const scenarioRoutes = require('./routes/scenarioRoutes')
 
 const app = Fastify({ logger: false })
 
@@ -54,6 +55,7 @@ const start = async () => {
 
     // STEP 9 addition
     app.register(orgRoutes, { prefix: '/api' })
+    app.register(scenarioRoutes, { prefix: '/api' })
 
     app.get('/health', async () => ({
       status: 'ok',
